@@ -1,5 +1,5 @@
 Flask==2.3.3
 Flask-SocketIO==5.3.5
 eventlet==0.33.3
-yt-dlp==2024.8.18
+yt-dlp==2025.7.31.233123.dev0
 psycopg2-binary==2.9.7
