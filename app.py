@@ -13,7 +13,7 @@ DB_NAME = "musicspace"
 # -----------------------------
 
 app = Flask(__name__)
-socketio = SocketIO(app)
+socketio = SocketIO(app, async_mode='eventlet')
 
 # store current state per room
 # e.g. {'ABCD1': {'url': 'https://...', 'position': 42.8, 'is_playing': True}}
@@ -187,4 +187,5 @@ def delete_session(code):
 #-------------------------------------------------------
 if __name__ == "__main__":
     socketio.run(app, debug=True)
+
 
