@@ -31,7 +31,8 @@ def get_db():
         port=DB_PORT,
         user=DB_USER,
         password=DB_PASSWORD,
-        dbname=DB_NAME
+        dbname=DB_NAME,
+        row_factory=psycopg.rows.dict_row
     )
 
 #-------------------------------------------------------
@@ -211,6 +212,7 @@ def delete_session(code):
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     socketio.run(app, host="0.0.0.0", port=port)
+
 
 
 
