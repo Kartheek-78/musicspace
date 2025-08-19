@@ -2,7 +2,7 @@ Flask==2.3.3
 Flask-SocketIO==5.3.5
 gevent>=22.10.2
 yt-dlp>=2025.7.31
-psycopg2-binary==2.9.7
+psycopg==3.2.10
 gunicorn>=20.1.0
 setuptools>=65.0.0
 
