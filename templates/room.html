@@ -85,7 +85,7 @@
         if (!audio.paused) {
           socket.emit("time_update", { room: room, time: audio.currentTime });
         }
-      }, 500);
+      }, 250);
 
       socket.on("joined", (data) => {
         const msg =
