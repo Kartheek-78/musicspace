@@ -5,10 +5,10 @@ import random, string, psycopg2
 from psycopg2.extras import RealDictCursor
 
 # --- PostgreSQL settings ---
-DB_HOST = "127.0.0.1"
+DB_HOST = "dpg-d2i9e3fdiees73d3ggd0-a"
 DB_PORT = 5432
-DB_USER = "your_pg_user"
-DB_PASSWORD = "your_pg_password"
+DB_USER = "kartheekreddy78"
+DB_PASSWORD = "vzrBm8pGEzqrGnbkggvoh8U45unyZur9"
 DB_NAME = "musicspace"
 # -----------------------------
 
@@ -187,3 +187,4 @@ def delete_session(code):
 #-------------------------------------------------------
 if __name__ == "__main__":
     socketio.run(app, debug=True)
+
