@@ -117,9 +117,31 @@ def on_play(data):
     raw_url = data["url"].split("&")[0]
     url = raw_url.replace("youtu.be/", "www.youtube.com/watch?v=") if "youtu.be/" in raw_url else raw_url
 
-    with YoutubeDL({'format':'bestaudio/best','quiet':True,'noplaylist':True}) as ydl:
-        info = ydl.extract_info(url, download=False)
-        audio_url = info["url"]
+    # Write cookies from environment variable to file (if any)
+    cookies_content = os.environ.get("YOUTUBE_COOKIES", "")
+    if cookies_content:
+        with open("cookies.txt", "w") as f:
+            f.write(cookies_content)
+        cookiefile = "cookies.txt"
+    else:
+        cookiefile = None  # No cookies provided
+
+    ydl_opts = {
+        'format': 'bestaudio/best',
+        'quiet': True,
+        'noplaylist': True
+    }
+
+    if cookiefile:
+        ydl_opts['cookiefile'] = cookiefile
+
+    try:
+        with YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=False)
+            audio_url = info["url"]
+    except Exception as e:
+        emit("error", {"message": f"Failed to load video: {str(e)}"}, room=request.sid)
+        return
 
     # store the state for rejoining users
     current_audio_state[data["room"]] = {
@@ -129,6 +151,7 @@ def on_play(data):
     }
 
     emit("play_audio", {"url": audio_url}, room=data["room"])
+
 
 @socketio.on("time_update")
 def on_time_update(data):
@@ -188,6 +211,7 @@ def delete_session(code):
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     socketio.run(app, host="0.0.0.0", port=port)
+
 
 
 
