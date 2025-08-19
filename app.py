@@ -1,8 +1,9 @@
 from flask import Flask, render_template, request, redirect, url_for
 from flask_socketio import SocketIO, join_room, leave_room, emit
 from yt_dlp import YoutubeDL
-import random, string, psycopg2
-from psycopg2.extras import RealDictCursor
+import random, string
+import psycopg
+import os
 
 # --- PostgreSQL settings ---
 DB_HOST = "dpg-d2i9e3fdiees73d3ggd0-a"
@@ -15,7 +16,6 @@ DB_NAME = "musicspace"
 app = Flask(__name__)
 socketio = SocketIO(app, async_mode='gevent')
 
-
 # store current state per room
 # e.g. {'ABCD1': {'url': 'https://...', 'position': 42.8, 'is_playing': True}}
 current_audio_state = {}
@@ -26,13 +26,12 @@ def random_code():
 #-------------------------------------------------------
 # DB Helper
 def get_db():
-    return psycopg2.connect(
+    return psycopg.connect(
         host=DB_HOST,
         port=DB_PORT,
         user=DB_USER,
         password=DB_PASSWORD,
-        database=DB_NAME,
-        cursor_factory=RealDictCursor
+        dbname=DB_NAME
     )
 
 #-------------------------------------------------------
@@ -188,6 +187,7 @@ def delete_session(code):
 #-------------------------------------------------------
 if __name__ == "__main__":
     socketio.run(app, debug=True)
+
 
 
 
