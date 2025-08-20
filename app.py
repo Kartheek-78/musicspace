@@ -144,8 +144,8 @@ def on_play(data):
         "position": 0,
         "is_playing": True
     }
+    emit("play_audio", {"url": audio_url}, room=data["room"], include_self=False)
 
-    emit("play_audio", {"url": audio_url}, room=data["room"])
 
 
 @socketio.on("time_update")
@@ -218,6 +218,7 @@ def delete_session(code):
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     socketio.run(app, host="0.0.0.0", port=port)
+
 
 
 
