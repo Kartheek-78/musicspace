@@ -273,6 +273,15 @@
         font-size: 1.6rem;
         color: #ffe600 !important; /* accent color for the code */
       }
+      #audioMessage {
+        text-align: center;
+        font-weight: 600;
+        font-size: 1rem;
+        color: #fff;
+        padding: 10px;
+      }
+
+
     </style>
   </head>
   <body>
@@ -299,9 +308,12 @@
       </div>
 
       <!-- Audio player full-width -->
-      <div class="card-container audio-container">
-        <audio id="audio" controls></audio>
-      </div>
+     <div class="card-container audio-container">
+        <div id="audioMessage">Paste YouTube link to listen</div>
+        <audio id="audio" controls style="display:none;"></audio>
+    </div>
+
+
     </div>
 
     <div id="tapOverlay">Tap anywhere to start playback</div>
@@ -315,11 +327,15 @@
   transports: ["websocket"], // force websocket
   upgrade: false
 });
-
+  const audioMessage = document.getElementById("audioMessage");
   const audio = document.getElementById("audio");
 
   let isSyncing = false;
   let justJoined = true;
+  audio.addEventListener("canplay", () => {
+      loadingText.style.display = "none";  // hide loading text
+      audio.style.display = "block";       // show audio player
+    });
 
   // ---- Unlock playback on first user interaction ----
   document.body.addEventListener(
@@ -339,13 +355,11 @@
 document.getElementById("playBtn").onclick = () => {
   let url = document.getElementById("yt").value;
 
-  // Play for myself (sender)
+  let url = document.getElementById("yt").value;
+  if (!url) return alert("Please paste a YouTube link!");
+  
   isSyncing = true;
-  audio.src = url;
-  audio.play().catch(() => {});
-  setTimeout(() => { isSyncing = false; }, 300);
-
-  // Tell the server so others can play
+  setAudio(url);
   socket.emit("play", { room: room, url: url });
 };
 
@@ -459,6 +473,26 @@ document.getElementById("playBtn").onclick = () => {
     ul.innerHTML = "";
     users.forEach((u) => (ul.innerHTML += `<li>${u}</li>`));
   }
+   function setAudio(url) {
+      // Show loading message
+      audioMessage.innerText = "Song is loading, please wait...";
+      audioMessage.style.display = "block";
+      audio.style.display = "none";
+    
+      // Set audio src
+      audio.src = url;
+      audio.load();
+      audio.play().catch(() => {});
+    
+      // When audio is ready
+      audio.addEventListener("canplay", () => {
+        audioMessage.style.display = "none";  // hide message
+        audio.style.display = "block";       // show audio player
+      }, { once: true });
+    
+      setTimeout(() => { isSyncing = false; }, 300);
+    }
+
 
   function showAlert(msg, type = "join") {
   const container = document.getElementById("fixed-alert");
@@ -466,12 +500,12 @@ document.getElementById("playBtn").onclick = () => {
   alert.classList.add("alert");
   alert.innerText = msg;
 
-  // Set background color
-  if (type === "join") {
-    alert.style.background = "rgba(40, 167, 69, 0.85)"; // green
-  } else if (type === "left") {
-    alert.style.background = "rgba(220, 53, 69, 0.85)"; // red
-  }
+ if (type === "join") {
+  alert.style.background = "rgba(25, 135, 84, 0.95)"; // darker green, more visible
+} else if (type === "left") {
+  alert.style.background = "rgba(200, 35, 50, 0.95)"; // darker red, more visible
+}
+
 
   // Apply animation: slide in and then slide out
   alert.style.animation = "slideInLeft 0.5s forwards, slideOutRight 0.5s 3s forwards";
