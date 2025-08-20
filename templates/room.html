@@ -71,11 +71,20 @@
   // ---- Join room ----
   socket.emit("join", { room: room, name: name });
 
-  // ---- Play button ----
-  document.getElementById("playBtn").onclick = () => {
-    let url = document.getElementById("yt").value;
-    socket.emit("play", { room: room, url: url });
-  };
+ // ---- Play button ----
+document.getElementById("playBtn").onclick = () => {
+  let url = document.getElementById("yt").value;
+
+  // Play for myself (sender)
+  isSyncing = true;
+  audio.src = url;
+  audio.play().catch(() => {});
+  setTimeout(() => { isSyncing = false; }, 300);
+
+  // Tell the server so others can play
+  socket.emit("play", { room: room, url: url });
+};
+
 
   // ---- Leave button ----
   document.getElementById("leaveBtn").onclick = () => {
