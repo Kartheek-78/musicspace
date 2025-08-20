@@ -178,6 +178,18 @@ def on_get_current(data):
     if code in current_audio_state:
         emit("current_state", current_audio_state[code], room=request.sid)
 
+@socketio.on("seek")
+def on_seek(data):
+    code = data["room"]
+    t = data["time"]
+    if code in current_audio_state:
+        current_audio_state[code]["position"] = t
+    emit("seek_from_server", {
+        "time": t,
+        "is_playing": current_audio_state[code].get("is_playing", False)
+    }, room=code, include_self=False)
+
+
 #-------------------------------------------------------
 # Helpers
 def get_users(code):
@@ -206,6 +218,7 @@ def delete_session(code):
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     socketio.run(app, host="0.0.0.0", port=port)
+
 
 
 
