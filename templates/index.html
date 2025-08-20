@@ -2,47 +2,259 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>YouTube Audio Sync</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>VibeRoom</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      href="https://fonts.googleapis.com/css2?family=Besley:ital,wght@0,400..900;1,400..900&family=Borel&family=Merriweather:ital,wght@0,300;0,400;0,700;0,900;1,300;1,400;1,700;1,900&family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap"
       rel="stylesheet"
     />
+    <style>
+      /* Global style */
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        font-family: "Poppins", sans-serif;
+        font-weight: 500;
+        font-style: normal;
+      }
+
+      body {
+        min-height: 100vh;
+        padding: 2rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2rem;
+        /* pattern layer */
+        background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60' viewBox='0 0 24 24' fill='%2399a4b2' opacity='0.75'%3E%3Cpath d='M18 3v13.09a4 4 0 1 1-2-3.46V7h-7V3h9z'/%3E%3C/svg%3E")
+            repeat,
+          linear-gradient(
+            45deg,
+            #0d6efd,
+            #07b686,
+            #ffe600,
+            #ff00aa,
+            #ae00ff,
+            #00c6ff,
+            #fd7f00,
+            #ffea00,
+            #00d977,
+            #ff0080,
+            #be1fcb,
+            #19c4ff,
+            #ffe133,
+            #06d6a0,
+            #ff4d4d,
+            #5932f3,
+            #0d6efd
+          );
+        background-size: auto, 2000% 2000%;
+        animation: gradientLoop 18s linear infinite;
+      }
+
+      @media (max-width: 768px) {
+        body {
+          animation: gradientLoop 8s linear infinite;
+        }
+      }
+
+      @keyframes gradientLoop {
+        0% {
+          background-position: 0% 50%;
+        }
+        100% {
+          background-position: 100% 50%;
+        }
+      }
+
+      .header-box {
+        text-align: center;
+        padding: 20px 10px; /* very compact */
+        border-radius: 12px;
+        background: rgba(0, 0, 0, 0.4);
+        backdrop-filter: blur(6px);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.25);
+        color: white;
+        overflow: hidden;
+      }
+
+      .vibe-title {
+        font-size: 1.8rem; /* smaller */
+        font-weight: 800;
+        background: linear-gradient(45deg, #ff00c8, #00ffe0, #ffea00);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        animation: floatText 3s ease-in-out infinite alternate;
+        margin-bottom: 8px; /* less space */
+      }
+
+      @keyframes floatText {
+        0% {
+          transform: translateY(0);
+        }
+        100% {
+          transform: translateY(-3px);
+        } /* subtle float */
+      }
+
+      .vibe-sub {
+        font-size: 0.85rem; /* smaller text */
+        max-width: 500px;
+        margin: 0 auto;
+        line-height: 1.3;
+        color: #e0e0e0;
+      }
+
+      .highlight {
+        color: #ffe600;
+        font-weight: 600;
+      }
+
+      /* Responsive adjustments */
+      @media (min-width: 1024px) {
+        .vibe-title {
+          font-size: 2rem;
+        }
+        .vibe-sub {
+          font-size: 0.95rem;
+        }
+      }
+
+      @media (max-width: 480px) {
+        .vibe-title {
+          font-size: 1.5rem;
+        }
+        .vibe-sub {
+          font-size: 0.8rem;
+        }
+      }
+      /* Grid layout */
+      .grid-wrapper {
+        width: 100%;
+        max-width: 900px;
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 1.2rem;
+      }
+
+      @media (min-width: 768px) {
+        .grid-wrapper {
+          grid-template-columns: repeat(2, 1fr);
+        }
+      }
+
+      /* --------- CARD (clean modern) ---------*/
+      .card {
+        padding: 2.5rem;
+        border-radius: 1rem;
+        background: #d7cbcb;
+        backdrop-filter: blur(50px);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+      }
+      @media (min-width: 770px) {
+        .create-card {
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+        }
+        .create-card .content-center {
+          flex: 1;
+          display: flex;
+          align-items: center;
+          margin-top: 50px;
+          justify-content: center;
+        }
+        @media (min-width: 770px) {
+          .create-card .content-center h5 {
+            font-size: 2rem;
+          }
+        }
+      }
+
+      /* --------- LABEL HEADINGS ---------*/
+      .card h5 {
+        font-weight: 700;
+        margin-bottom: 1.5rem;
+        text-align: center;
+        font-size: 1.35rem;
+      }
+
+      /* --------- INPUT (Spotify-style) ---------*/
+      .card input {
+        width: 100%;
+        background: #f2f2f2;
+        border: none;
+        border-radius: 10px;
+        padding: 1rem;
+        font-size: 1rem;
+        margin-bottom: 1.1rem;
+        transition: background 0.2s;
+      }
+      .card input:focus {
+        background: #ffffff;
+        border: 1px solid #07b686; /* border color when focused */
+        box-shadow: 0 0 0 3px rgba(7, 182, 134, 0.2);
+        outline: none;
+      }
+
+      /* --------- PRIMARY BUTTON ---------*/
+      .card button {
+        width: 100%;
+        padding: 1rem;
+        border: none;
+        border-radius: 30px;
+        font-size: 1rem;
+        font-weight: 600;
+        color: #fff;
+        background: #07b686;
+        cursor: pointer;
+        transition: background 0.25s, transform 0.25s;
+      }
+      .card button:hover {
+        background: #05976e;
+        transform: translateY(-2px);
+      }
+
+      .card .join-btn {
+        background: #0d6efd;
+      }
+      .card .join-btn:hover {
+        background: #0954cb;
+      }
+    </style>
   </head>
-  <body class="p-4">
-    <div class="container text-center">
-      <h3>YouTube Audio Sync</h3>
-      <div class="row mt-5">
-        <div class="col-md-6 mb-3">
-          <div class="card h-100">
-            <div class="card-body d-flex flex-column justify-content-center">
-              <form action="/create">
-                <button class="btn btn-primary w-100">Create Space</button>
-              </form>
-            </div>
-          </div>
+  <body>
+    <div class="header-box">
+      <h1 class="vibe-title">🎵 VibeRoom 🎶</h1>
+      <p class="vibe-sub">
+        Create a private space or join using a
+        <span class="highlight">room code</span> to
+        <span class="highlight">sync YouTube audio</span> with friends.
+      </p>
+    </div>
+
+    <div class="grid-wrapper">
+      <div class="card create-card">
+        <div class="content-center">
+          <h5 class="myhead">Create New Space</h5>
         </div>
-        <div class="col-md-6">
-          <div class="card h-100">
-            <div class="card-body">
-              <form action="/join" method="POST">
-                <input
-                  class="form-control mb-2"
-                  name="name"
-                  placeholder="Your Name"
-                  required
-                />
-                <input
-                  class="form-control mb-2"
-                  name="code"
-                  placeholder="Room Code"
-                  required
-                />
-                <button class="btn btn-success w-100">Join Space</button>
-              </form>
-            </div>
-          </div>
-        </div>
+        <form action="/create">
+          <button type="submit">Create</button>
+        </form>
+      </div>
+
+      <div class="card">
+        <h5>Join Space</h5>
+        <form action="/join" method="POST">
+          <input type="text" name="name" placeholder="Your Name" required />
+          <input type="text" name="code" placeholder="Room Code" required />
+          <button type="submit" class="join-btn">Join Space</button>
+        </form>
       </div>
     </div>
   </body>
 </html>
+
