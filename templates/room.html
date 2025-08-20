@@ -47,7 +47,11 @@
  <script>
   const room = "{{code}}";
   const name = "{{name}}";
-  const socket = io();
+  const socket = io({
+  transports: ["websocket"], // force websocket
+  upgrade: false
+});
+
   const audio = document.getElementById("audio");
 
   let isSyncing = false;
