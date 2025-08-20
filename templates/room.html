@@ -332,11 +332,6 @@
 
   let isSyncing = false;
   let justJoined = true;
-  audio.addEventListener("canplay", () => {
-      loadingText.style.display = "none";  // hide loading text
-      audio.style.display = "block";       // show audio player
-    });
-
   // ---- Unlock playback on first user interaction ----
   document.body.addEventListener(
     "click",
@@ -358,7 +353,7 @@ document.getElementById("playBtn").onclick = () => {
   
   isSyncing = true;
   setAudio(url);
-  socket.emit("play", { room: room, url: url });
+  socket.emit("play", { room: room, url: url, name: name });
 };
 
 
@@ -389,13 +384,25 @@ document.getElementById("playBtn").onclick = () => {
   socket.on("sync_state", applyState);
   socket.on("current_state", applyState);
 
-  socket.on("play_audio", (data) => {
-    isSyncing = true;
-    audio.src = data.url;
+ socket.on("play_audio", (data) => {
+  // For all other users
+  isSyncing = true;
+
+  // Hide audio player, show loading message
+  audio.style.display = "none";
+  tapOverlay.innerText = `${data.user} is playing, please wait until the song is loaded...`;
+  tapOverlay.style.display = "flex";
+
+  audio.src = data.url;
+  audio.load();
+
+  audio.oncanplaythrough = () => {
+    tapOverlay.style.display = "none";
+    audio.style.display = "block";
     audio.play().catch(() => {});
     setTimeout(() => { isSyncing = false; }, 300);
-  });
-
+  };
+});
   socket.on("pause_from_server", (data) => {
     isSyncing = true;
     audio.currentTime = data.time;
@@ -409,6 +416,17 @@ document.getElementById("playBtn").onclick = () => {
     audio.play().catch(() => {});
     setTimeout(() => { isSyncing = false; }, 300);
   });
+
+   socket.on("loading_for_self", (data) => {
+    document.getElementById("statusText").innerText = data.msg;
+    document.getElementById("audio").style.display = "none";
+});
+
+// For other users
+socket.on("loading_for_others", (data) => {
+    document.getElementById("statusText").innerText = data.msg;
+    document.getElementById("audio").style.display = "none";
+});
 
   socket.on("seek_from_server", (data) => {
     isSyncing = true;
@@ -471,26 +489,50 @@ document.getElementById("playBtn").onclick = () => {
     ul.innerHTML = "";
     users.forEach((u) => (ul.innerHTML += `<li>${u}</li>`));
   }
-   function setAudio(url) {
-      // Show loading message
-      audioMessage.innerText = "Song is loading, please wait...";
-      audioMessage.style.display = "block";
-      audio.style.display = "none";
-    
-      // Set audio src
-      audio.src = url;
-      audio.load();
-      audio.play().catch(() => {});
-    
-      // When audio is ready
-      audio.addEventListener("canplay", () => {
-        audioMessage.style.display = "none";  // hide message
-        audio.style.display = "block";       // show audio player
-      }, { once: true });
-    
-      setTimeout(() => { isSyncing = false; }, 300);
-    }
+  function setAudio(url, isCurrentUser = true, username = "") {
+  // Show loading message
+  if (isCurrentUser) {
+    audioMessage.innerText = "Song is loading, please wait...";
+  } else {
+    audioMessage.innerText = `${username} is playing, please wait until the song is loaded...`;
+  }
+  audioMessage.style.display = "flex";
+  audio.style.display = "none";
 
+  // Set audio src
+  audio.src = url;
+  audio.load();
+  audio.play().catch(() => {});
+
+  // When audio is ready, hide message and show player
+  audio.addEventListener(
+    "canplay",
+    () => {
+      audioMessage.style.display = "none";  // hide loading text
+      audio.style.display = "block";        // show audio player
+    },
+    { once: true } // ensures this listener runs only once
+  );
+
+  setTimeout(() => {
+    isSyncing = false;
+  }, 300);
+}
+
+// Example usage for current user
+document.getElementById("playBtn").onclick = () => {
+  const url = document.getElementById("yt").value;
+  if (!url) return alert("Please paste a YouTube link!");
+  isSyncing = true;
+  setAudio(url, true);
+  socket.emit("play", { room: room, url: url, name: name });
+};
+
+// Example usage for other users
+socket.on("play_audio", (data) => {
+  isSyncing = true;
+  setAudio(data.url, false, data.user);
+});
 
   function showAlert(msg, type = "join") {
   const container = document.getElementById("fixed-alert");
