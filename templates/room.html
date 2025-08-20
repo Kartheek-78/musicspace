@@ -460,26 +460,30 @@ document.getElementById("playBtn").onclick = () => {
     users.forEach((u) => (ul.innerHTML += `<li>${u}</li>`));
   }
 
-   function showAlert(msg, type = "join") {
-        const container = document.getElementById("fixed-alert");
-        const alert = document.createElement("div");
-        alert.classList.add("alert");
-        alert.innerText = msg;
+  function showAlert(msg, type = "join") {
+  const container = document.getElementById("fixed-alert");
+  const alert = document.createElement("div");
+  alert.classList.add("alert");
+  alert.innerText = msg;
 
-        // Apply animation
-        if (type === "join") {
-          alert.style.animation = "slideInLeft 0.5s forwards";
-        } else if (type === "left") {
-          alert.style.animation = "slideOutRight 0.5s forwards";
-        }
+  // Set background color
+  if (type === "join") {
+    alert.style.background = "rgba(40, 167, 69, 0.85)"; // green
+  } else if (type === "left") {
+    alert.style.background = "rgba(220, 53, 69, 0.85)"; // red
+  }
 
-        container.appendChild(alert);
+  // Apply animation: slide in and then slide out
+  alert.style.animation = "slideInLeft 0.5s forwards, slideOutRight 0.5s 3s forwards";
 
-        // Remove alert after animation + display
-        setTimeout(() => {
-          alert.remove();
-        }, 3000);
-      }
+  container.appendChild(alert);
+
+  // Remove element after total animation time (in ms)
+  setTimeout(() => {
+    alert.remove();
+  }, 3500);
+}
+
 </script>
 
 
