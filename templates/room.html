@@ -460,13 +460,26 @@ document.getElementById("playBtn").onclick = () => {
     users.forEach((u) => (ul.innerHTML += `<li>${u}</li>`));
   }
 
-  function showAlert(msg) {
-    const container = document.getElementById("alert-container");
-    container.innerHTML = `<div class="alert alert-info" id="joinAlert">${msg}</div>`;
-    setTimeout(() => {
-      container.innerHTML = "";
-    }, 5000);
-  }
+   function showAlert(msg, type = "join") {
+        const container = document.getElementById("fixed-alert");
+        const alert = document.createElement("div");
+        alert.classList.add("alert");
+        alert.innerText = msg;
+
+        // Apply animation
+        if (type === "join") {
+          alert.style.animation = "slideInLeft 0.5s forwards";
+        } else if (type === "left") {
+          alert.style.animation = "slideOutRight 0.5s forwards";
+        }
+
+        container.appendChild(alert);
+
+        // Remove alert after animation + display
+        setTimeout(() => {
+          alert.remove();
+        }, 3000);
+      }
 </script>
 
 
