@@ -118,30 +118,12 @@ def on_leave(data):
         if code in current_audio_state:
             current_audio_state.pop(code)
 
-def normalize_youtube_url(raw_url):
-    """
-    Convert any YouTube URL to https://youtu.be/videoid
-    """
-    raw_url = raw_url.strip()
-    url = raw_url.split('?')[0].split('&')[0]  # remove query parameters
-    video_id = ""
-
-    if "youtu.be/" in url:
-        video_id = url.split("youtu.be/")[1]
-    elif "youtube.com/watch?v=" in url:
-        video_id = url.split("watch?v=")[1]
-    elif "youtube.com/embed/" in url:
-        video_id = url.split("embed/")[1]
-    else:
-        return raw_url  # fallback if unrecognized
-
-    video_id = video_id.rstrip("/")  # remove trailing slash
-    return f"https://youtu.be/{video_id}"
-
 @socketio.on("play")
 def on_play(data):
-    url =  normalize_youtube_url(data["url"])
+    raw_url = data["url"].split("&")[0]
+    url = raw_url.replace("youtu.be/", "www.youtube.com/watch?v=") if "youtu.be/" in raw_url else raw_url
 
+    # Use cookies from environment variable
     cookies_path = os.environ.get("YOUTUBE_COOKIES")  # e.g., "cookies.txt"
     
     ydl_opts = {
@@ -167,10 +149,8 @@ def on_play(data):
         "position": 0,
         "is_playing": True
     }
-
-    # Emit to everyone else except sender
-    emit("play_audio", {"url": audio_url}, room=data["room"], include_self=False)
-
+    emit("play_audio", {"url": audio_url}, room=data["room"])
+    
 @socketio.on("time_update")
 def on_time_update(data):
     code = data["room"]
@@ -241,6 +221,7 @@ def delete_session(code):
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     socketio.run(app, host="0.0.0.0", port=port)
+
 
 
 
