@@ -140,21 +140,36 @@ def normalize_youtube_url(raw_url):
 
 @socketio.on("play")
 def on_play(data):
-   
     url =  normalize_youtube_url(data["url"])
 
-    with YoutubeDL({'format':'bestaudio/best','quiet':True,'noplaylist':True}) as ydl:
-        info = ydl.extract_info(url, download=False)
-        audio_url = info["url"]
+    cookies_path = os.environ.get("YOUTUBE_COOKIES")  # e.g., "cookies.txt"
+    
+    ydl_opts = {
+        'format': 'bestaudio/best',
+        'quiet': True,
+        'noplaylist': True,
+    }
 
-    # ✅ store the state so that a rejoining user can sync
+    if cookies_path:
+        ydl_opts['cookiefile'] = cookies_path
+
+    try:
+        with YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=False)
+            audio_url = info["url"]
+    except Exception as e:
+        emit("error", {"message": f"Failed to fetch video: {str(e)}"}, room=data["room"])
+        return
+
+    # store the state for rejoining users
     current_audio_state[data["room"]] = {
         "url": audio_url,
         "position": 0,
         "is_playing": True
     }
 
-    emit("play_audio", {"url": audio_url}, room=data["room"])
+    # Emit to everyone else except sender
+    emit("play_audio", {"url": audio_url}, room=data["room"], include_self=False)
 
 @socketio.on("time_update")
 def on_time_update(data):
@@ -226,6 +241,7 @@ def delete_session(code):
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     socketio.run(app, host="0.0.0.0", port=port)
+
 
 
 
