@@ -140,16 +140,30 @@ def normalize_youtube_url(raw_url):
 
 @socketio.on("play")
 def on_play(data):
-    url = normalize_youtube_url(raw_url)
-    # Use cookies from environment variable
+    room = data["room"]
+    user = data["name"]
+
+    url = normalize_youtube_url(data["url"])
+    
+    # Notify the user who clicked "Play for All"
+    emit("loading_for_self", {"msg": "Song is loading, please wait..."}, room=request.sid)
+    
+    # Notify all other users in the room
+    emit(
+        "loading_for_others",
+        {"msg": f"{user} is playing, please wait until the song is loaded..."},
+        room=room,
+        include_self=False
+    )
+
+    # Use cookies if provided
     cookies_path = os.environ.get("YOUTUBE_COOKIES")  # e.g., "cookies.txt"
     
     ydl_opts = {
         'format': 'bestaudio/best',
         'quiet': True,
-        'noplaylist': True,
+        'noplaylist': True
     }
-
     if cookies_path:
         ydl_opts['cookiefile'] = cookies_path
 
@@ -158,18 +172,18 @@ def on_play(data):
             info = ydl.extract_info(url, download=False)
             audio_url = info["url"]
     except Exception as e:
-        emit("error", {"message": f"Failed to fetch video: {str(e)}"}, room=data["room"])
+        emit("error", {"message": f"Failed to fetch video: {str(e)}"}, room=room)
         return
 
-    # store the state for rejoining users
-    current_audio_state[data["room"]] = {
+    # Store state for rejoining users
+    current_audio_state[room] = {
         "url": audio_url,
         "position": 0,
         "is_playing": True
     }
-    emit("play_audio", {"url": audio_url}, room=data["room"])
 
-
+    # Play audio for everyone
+    emit("play_audio", {"url": audio_url}, room=room)
 
 @socketio.on("time_update")
 def on_time_update(data):
@@ -241,6 +255,7 @@ def delete_session(code):
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     socketio.run(app, host="0.0.0.0", port=port)
+
 
 
 
