@@ -321,243 +321,178 @@
     <footer>Made by <span class="creator-name">Kartheek</span></footer>
 
  <script>
-  const room = "{{code}}";
-  const name = "{{name}}";
-  const socket = io({
-  transports: ["websocket"], // force websocket
-  upgrade: false
-});
-  const audioMessage = document.getElementById("audioMessage");
-  const audio = document.getElementById("audio");
+const room = "{{code}}";
+const name = "{{name}}";
+const socket = io({ transports: ["websocket"], upgrade: false });
 
-  let isSyncing = false;
-  let justJoined = true;
-  // ---- Unlock playback on first user interaction ----
-  document.body.addEventListener(
-    "click",
-    () => {
-      document.getElementById("tapOverlay").style.display = "none";
-      justJoined = false;
-      socket.emit("get_current", { room: room });
-    },
-    { once: true }
-  );
+const audioMessage = document.getElementById("audioMessage");
+const audio = document.getElementById("audio");
+const tapOverlay = document.getElementById("tapOverlay");
 
-  // ---- Join room ----
-  socket.emit("join", { room: room, name: name });
+let isSyncing = false;
+let justJoined = true;
 
- // ---- Play button ----
-document.getElementById("playBtn").onclick = () => {
-  let url = document.getElementById("yt").value;
-  if (!url) return alert("Please paste a YouTube link!");
-  
-  isSyncing = true;
-  setAudio(url);
-  socket.emit("play", { room: room, url: url, name: name });
-};
-
-
-  // ---- Leave button ----
-  document.getElementById("leaveBtn").onclick = () => {
-    socket.emit("leave", { room: room, name: name });
-    window.location.href = "/";
-  };
-
-  // Helper to safely apply server state without loops
-  function applyState(state) {
-    if (!state || !state.url) return;
-    isSyncing = true;
-    audio.src = state.url;
-    audio.currentTime = state.position || 0;
-
-    if (state.is_playing && !justJoined) {
-      audio.play().catch(() => {});
-    } else {
-      audio.pause();
-    }
-
-    // Give browser time to settle before re-enabling events
-    setTimeout(() => { isSyncing = false; }, 300);
-  }
-
-  // ---- Server → Client ----
-  socket.on("sync_state", applyState);
-  socket.on("current_state", applyState);
-
- socket.on("play_audio", (data) => {
-  // For all other users
-  isSyncing = true;
-
-  // Hide audio player, show loading message
-  audio.style.display = "none";
-  tapOverlay.innerText = `${data.user} is playing, please wait until the song is loaded...`;
-  tapOverlay.style.display = "flex";
-
-  audio.src = data.url;
-  audio.load();
-
-  audio.oncanplaythrough = () => {
+// ---- Unlock playback on first user interaction ----
+document.body.addEventListener(
+  "click",
+  () => {
     tapOverlay.style.display = "none";
-    audio.style.display = "block";
-    audio.play().catch(() => {});
-    setTimeout(() => { isSyncing = false; }, 300);
-  };
-});
-  socket.on("pause_from_server", (data) => {
-    isSyncing = true;
-    audio.currentTime = data.time;
-    audio.pause();
-    setTimeout(() => { isSyncing = false; }, 300);
-  });
+    justJoined = false;
+    socket.emit("get_current", { room: room });
+  },
+  { once: true }
+);
 
-  socket.on("resume_from_server", (data) => {
-    isSyncing = true;
-    audio.currentTime = data.time;
-    audio.play().catch(() => {});
-    setTimeout(() => { isSyncing = false; }, 300);
-  });
+// ---- Join room ----
+socket.emit("join", { room: room, name: name });
 
-   socket.on("loading_for_self", (data) => {
-    document.getElementById("statusText").innerText = data.msg;
-    document.getElementById("audio").style.display = "none";
-});
-
-// For other users
-socket.on("loading_for_others", (data) => {
-    document.getElementById("statusText").innerText = data.msg;
-    document.getElementById("audio").style.display = "none";
-});
-
-  socket.on("seek_from_server", (data) => {
-    isSyncing = true;
-    audio.currentTime = data.time;
-    if (data.is_playing) {
-      audio.play().catch(() => {});
-    } else {
-      audio.pause();
-    }
-    setTimeout(() => { isSyncing = false; }, 300);
-  });
-
-  // ---- Client → Server (only if not syncing) ----
-  audio.onpause = () => {
-    if (!isSyncing && !justJoined) {
-      socket.emit("pause", { room: room, time: audio.currentTime });
-    }
-  };
-
-  audio.onplay = () => {
-    if (!isSyncing && !justJoined) {
-      socket.emit("resume", { room: room, time: audio.currentTime });
-    }
-  };
-
-  audio.onseeked = () => {
-    if (!isSyncing) {
-      socket.emit("seek", { room: room, time: audio.currentTime });
-    }
-  };
-
-  // ---- Periodic time sync ----
-  setInterval(() => {
-    if (!audio.paused && !isSyncing) {
-      socket.emit("time_update", { room: room, time: audio.currentTime });
-    }
-  }, 1000);
-
-  // ---- Users ----
-  socket.on("joined", (data) => {
-    const msg =
-      data.type === "rejoined"
-        ? `${data.name} rejoined`
-        : `${data.name} joined`;
-    showAlert(msg, "join");
-    updateUsers(data.users);
-  });
-
-  socket.on("left", (data) => {
-   showAlert(`${data.name} left`, "left");
-    updateUsers(data.users);
-  });
-
-  socket.on("users", (data) => {
-    updateUsers(data);
-  });
-
-  function updateUsers(users) {
-    let ul = document.getElementById("users");
-    ul.innerHTML = "";
-    users.forEach((u) => (ul.innerHTML += `<li>${u}</li>`));
-  }
-  function setAudio(url, isCurrentUser = true, username = "") {
-  // Show loading message
-  if (isCurrentUser) {
-    audioMessage.innerText = "Song is loading, please wait...";
-  } else {
-    audioMessage.innerText = `${username} is playing, please wait until the song is loaded...`;
-  }
-  audioMessage.style.display = "flex";
-  audio.style.display = "none";
-
-  // Set audio src
-  audio.src = url;
-  audio.load();
-  audio.play().catch(() => {});
-
-  // When audio is ready, hide message and show player
-  audio.addEventListener(
-    "canplay",
-    () => {
-      audioMessage.style.display = "none";  // hide loading text
-      audio.style.display = "block";        // show audio player
-    },
-    { once: true } // ensures this listener runs only once
-  );
-
-  setTimeout(() => {
-    isSyncing = false;
-  }, 300);
-}
-
-// Example usage for current user
+// ---- Play button ----
 document.getElementById("playBtn").onclick = () => {
   const url = document.getElementById("yt").value;
   if (!url) return alert("Please paste a YouTube link!");
+
   isSyncing = true;
   setAudio(url, true);
   socket.emit("play", { room: room, url: url, name: name });
 };
 
-// Example usage for other users
-socket.on("play_audio", (data) => {
+// ---- Leave button ----
+document.getElementById("leaveBtn").onclick = () => {
+  socket.emit("leave", { room: room, name: name });
+  window.location.href = "/";
+};
+
+// ---- Apply server state safely ----
+function applyState(state) {
+  if (!state || !state.url) return;
   isSyncing = true;
-  setAudio(data.url, false, data.user);
+  audio.src = state.url;
+  audio.currentTime = state.position || 0;
+
+  if (state.is_playing && !justJoined) {
+    audio.play().catch(() => {});
+  } else {
+    audio.pause();
+  }
+
+  setTimeout(() => { isSyncing = false; }, 300);
+}
+
+// ---- Server → Client ----
+socket.on("sync_state", applyState);
+socket.on("current_state", applyState);
+
+// ---- Play audio ----
+socket.on("play_audio", (data) => {
+  const isCurrentUser = data.name === name;
+  isSyncing = true;
+  setAudio(data.url, isCurrentUser, data.name);
 });
 
-  function showAlert(msg, type = "join") {
+// ---- Pause / Resume / Seek ----
+socket.on("pause_from_server", (data) => {
+  isSyncing = true;
+  audio.currentTime = data.time;
+  audio.pause();
+  setTimeout(() => { isSyncing = false; }, 300);
+});
+
+socket.on("resume_from_server", (data) => {
+  isSyncing = true;
+  audio.currentTime = data.time;
+  audio.play().catch(() => {});
+  setTimeout(() => { isSyncing = false; }, 300);
+});
+
+socket.on("seek_from_server", (data) => {
+  isSyncing = true;
+  audio.currentTime = data.time;
+  if (data.is_playing) audio.play().catch(() => {});
+  else audio.pause();
+  setTimeout(() => { isSyncing = false; }, 300);
+});
+
+// ---- Client → Server events ----
+audio.onpause = () => {
+  if (!isSyncing && !justJoined)
+    socket.emit("pause", { room: room, time: audio.currentTime });
+};
+
+audio.onplay = () => {
+  if (!isSyncing && !justJoined)
+    socket.emit("resume", { room: room, time: audio.currentTime });
+};
+
+audio.onseeked = () => {
+  if (!isSyncing)
+    socket.emit("seek", { room: room, time: audio.currentTime });
+};
+
+// ---- Periodic time sync ----
+setInterval(() => {
+  if (!audio.paused && !isSyncing)
+    socket.emit("time_update", { room: room, time: audio.currentTime });
+}, 1000);
+
+// ---- Users list & alerts ----
+socket.on("joined", (data) => {
+  const msg = data.type === "rejoined" ? `${data.name} rejoined` : `${data.name} joined`;
+  showAlert(msg, "join");
+  updateUsers(data.users);
+});
+
+socket.on("left", (data) => {
+  showAlert(`${data.name} left`, "left");
+  updateUsers(data.users);
+});
+
+socket.on("users", updateUsers);
+
+function updateUsers(users) {
+  const ul = document.getElementById("users");
+  ul.innerHTML = "";
+  users.forEach(u => ul.innerHTML += `<li>${u}</li>`);
+}
+
+// ---- Set audio and loading messages ----
+function setAudio(url, isCurrentUser = true, username = "") {
+  audioMessage.innerText = isCurrentUser
+    ? "Song is loading, please wait..."
+    : `${username} is playing, please wait until the song is loaded...`;
+
+  audioMessage.style.display = "flex";
+  audio.style.display = "none";
+
+  audio.src = url;
+  audio.load();
+  audio.play().catch(() => {});
+
+  audio.addEventListener(
+    "canplay",
+    () => {
+      audioMessage.style.display = "none";
+      audio.style.display = "block";
+      isSyncing = false;
+    },
+    { once: true }
+  );
+}
+
+// ---- Alerts ----
+function showAlert(msg, type = "join") {
   const container = document.getElementById("fixed-alert");
   const alert = document.createElement("div");
   alert.classList.add("alert");
   alert.innerText = msg;
 
- if (type === "join") {
-  alert.style.background = "rgba(25, 135, 84, 0.95)"; // darker green, more visible
-} else if (type === "left") {
-  alert.style.background = "rgba(200, 35, 50, 0.95)"; // darker red, more visible
-}
+  if (type === "join") alert.style.background = "rgba(25, 135, 84, 0.95)";
+  else if (type === "left") alert.style.background = "rgba(200, 35, 50, 0.95)";
 
-
-  // Apply animation: slide in and then slide out
   alert.style.animation = "slideInLeft 0.5s forwards, slideOutRight 0.5s 3s forwards";
-
   container.appendChild(alert);
 
-  // Remove element after total animation time (in ms)
-  setTimeout(() => {
-    alert.remove();
-  }, 3500);
+  setTimeout(() => alert.remove(), 3500);
 }
-
 </script>
 
 
