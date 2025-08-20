@@ -68,7 +68,6 @@ def room(code):
     name = request.args.get("name")
     return render_template("room.html", code=code, name=name)
 
-#-------------------------------------------------------
 @socketio.on("join")
 def on_join(data):
     code = data["room"]
@@ -93,11 +92,17 @@ def on_join(data):
 
     join_room(code)
     users = get_users(code)
+
+    # Emit joined to everyone including the new user
     emit("joined", {"name": name, "users": users, "type": msg}, room=code)
 
-    # sync current state only for this client
+    # small delay to make sure client is ready
+    socketio.sleep(0.05)
+
+    # Now send current state only to the new client
     if code in current_audio_state:
         emit("sync_state", current_audio_state[code], room=request.sid)
+
 
 @socketio.on("leave")
 def on_leave(data):
@@ -218,6 +223,7 @@ def delete_session(code):
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     socketio.run(app, host="0.0.0.0", port=port)
+
 
 
 
