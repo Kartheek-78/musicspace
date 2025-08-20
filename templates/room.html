@@ -44,113 +44,137 @@
       Tap anywhere to start playback
     </div>
 
-    <script>
-      const room = "{{code}}";
-      const name = "{{name}}";
-      const socket = io();
-      document.body.addEventListener(
-        "click",
-        () => {
-          const overlay = document.getElementById("tapOverlay");
-          overlay.style.display = "none";
+   <script>
+  const room = "{{code}}";
+  const name = "{{name}}";
+  const socket = io();
+  const audio = document.getElementById("audio");
 
-          // ask server for latest timestamp (so we don't play old one)
-          socket.emit("get_current", { room: room });
-        },
-        { once: true }
-      );
+  let isSyncing = false;
+  let justJoined = true;
 
-      socket.emit("join", { room: room, name: name });
+  document.body.addEventListener(
+    "click",
+    () => {
+      document.getElementById("tapOverlay").style.display = "none";
+      justJoined = false;
+      socket.emit("get_current", { room: room });
+    },
+    { once: true }
+  );
 
-      document.getElementById("playBtn").onclick = () => {
-        let url = document.getElementById("yt").value;
-        socket.emit("play", { room: room, url: url });
-      };
+  socket.emit("join", { room: room, name: name });
 
-      document.getElementById("leaveBtn").onclick = () => {
-        socket.emit("leave", { room: room, name: name });
-        window.location.href = "/";
-      };
+  document.getElementById("playBtn").onclick = () => {
+    let url = document.getElementById("yt").value;
+    socket.emit("play", { room: room, url: url });
+  };
 
-      socket.on("sync_state", (state) => {
-        const audio = document.getElementById("audio");
-        audio.src = state.url;
-        audio.currentTime = state.position;
-        if (state.is_playing) {
-          audio.play();
-        }
-      });
+  document.getElementById("leaveBtn").onclick = () => {
+    socket.emit("leave", { room: room, name: name });
+    window.location.href = "/";
+  };
 
-      setInterval(() => {
-        if (!audio.paused) {
-          socket.emit("time_update", { room: room, time: audio.currentTime });
-        }
-      }, 250);
+  socket.on("sync_state", (state) => {
+    isSyncing = true;
+    audio.src = state.url;
+    audio.currentTime = state.position;
+    if (state.is_playing && !justJoined) audio.play().catch(() => {});
+    isSyncing = false;
+  });
 
-      socket.on("joined", (data) => {
-        const msg =
-          data.type === "rejoined"
-            ? `${data.name} rejoined`
-            : `${data.name} joined`;
-        showAlert(msg);
-        updateUsers(data.users);
-      });
+  socket.on("current_state", (state) => {
+    isSyncing = true;
+    audio.src = state.url;
+    audio.currentTime = state.position;
+    if (state.is_playing && !justJoined) audio.play().catch(() => {});
+    isSyncing = false;
+  });
 
-      socket.on("left", (data) => {
-        showAlert(`${data.name} left`);
-        updateUsers(data.users);
-      });
-      audio.onpause = () => {
-        socket.emit("pause", { room: room, time: audio.currentTime });
-      };
+  setInterval(() => {
+    if (!audio.paused) {
+      socket.emit("time_update", { room: room, time: audio.currentTime });
+    }
+  }, 250);
 
-      audio.onplay = () => {
-        socket.emit("resume", { room: room, time: audio.currentTime });
-      };
+  socket.on("joined", (data) => {
+    const msg =
+      data.type === "rejoined"
+        ? `${data.name} rejoined`
+        : `${data.name} joined`;
+    showAlert(msg);
+    updateUsers(data.users);
+  });
 
-      socket.on("pause_from_server", (data) => {
-        audio.pause();
-        audio.currentTime = data.time;
-      });
+  socket.on("left", (data) => {
+    showAlert(`${data.name} left`);
+    updateUsers(data.users);
+  });
 
-      socket.on("resume_from_server", (data) => {
-        audio.currentTime = data.time;
-        audio.play();
-      });
+  audio.onpause = () => {
+    if (!isSyncing && !justJoined) {
+      socket.emit("pause", { room: room, time: audio.currentTime });
+    }
+  };
 
-      // server sends the most up-to-date audio state (url + position)
-      socket.on("current_state", (state) => {
-        const audio = document.getElementById("audio");
-        audio.src = state.url;
-        audio.currentTime = state.position;
-        if (state.is_playing) {
-          audio.play();
-        }
-      });
+  audio.onplay = () => {
+    if (!isSyncing && !justJoined) {
+      socket.emit("resume", { room: room, time: audio.currentTime });
+    }
+  };
 
-      socket.on("play_audio", (data) => {
-        const audio = document.getElementById("audio");
-        audio.src = data.url;
-        audio.play();
-      });
+  audio.onseeked = () => {
+    if (!isSyncing) {
+      socket.emit("seek", { room: room, time: audio.currentTime });
+    }
+  };
 
-      socket.on("users", (data) => {
-        updateUsers(data);
-      });
+  socket.on("pause_from_server", (data) => {
+    isSyncing = true;
+    audio.pause();
+    audio.currentTime = data.time;
+    isSyncing = false;
+  });
 
-      function updateUsers(users) {
-        let ul = document.getElementById("users");
-        ul.innerHTML = "";
-        users.forEach((u) => (ul.innerHTML += `<li>${u}</li>`));
-      }
+  socket.on("resume_from_server", (data) => {
+    isSyncing = true;
+    audio.currentTime = data.time;
+    audio.play().catch(() => {});
+    isSyncing = false;
+  });
 
-      function showAlert(msg) {
-        const container = document.getElementById("alert-container");
-        container.innerHTML = `<div class="alert alert-info" id="joinAlert">${msg}</div>`;
-        setTimeout(() => {
-          container.innerHTML = "";
-        }, 5000);
-      }
-    </script>
+  socket.on("seek_from_server", (data) => {
+    isSyncing = true;
+    audio.currentTime = data.time;
+    if (data.is_playing) audio.play().catch(() => {});
+    isSyncing = false;
+  });
+
+  socket.on("play_audio", (data) => {
+    isSyncing = true;
+    audio.src = data.url;
+    audio.play().catch(() => {});
+    isSyncing = false;
+  });
+
+  socket.on("users", (data) => {
+    updateUsers(data);
+  });
+
+  function updateUsers(users) {
+    let ul = document.getElementById("users");
+    ul.innerHTML = "";
+    users.forEach((u) => (ul.innerHTML += `<li>${u}</li>`));
+  }
+
+  function showAlert(msg) {
+    const container = document.getElementById("alert-container");
+    container.innerHTML = `<div class="alert alert-info" id="joinAlert">${msg}</div>`;
+    setTimeout(() => {
+      container.innerHTML = "";
+    }, 5000);
+  }
+</script>
+
   </body>
 </html>
