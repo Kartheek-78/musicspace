@@ -44,154 +44,174 @@
       Tap anywhere to start playback
     </div>
 
- <script>
+<script>
   const room = "{{code}}";
   const name = "{{name}}";
   const socket = io({
-  transports: ["websocket"], // force websocket
-  upgrade: false
-});
+    transports: ["websocket"],
+    upgrade: false
+  });
 
   const audio = document.getElementById("audio");
 
   let isSyncing = false;
   let justJoined = true;
 
-  // ---- Unlock playback on first user interaction ----
+  // ---------- Helpers ----------
+  function loadAndMaybePlay(url, position = 0, shouldPlay = false) {
+    isSyncing = true;
+
+    // Set source only if changed to avoid redundant loads
+    if (audio.src !== url) {
+      audio.src = url;
+    }
+
+    const act = () => {
+      audio.currentTime = position || 0;
+      if (shouldPlay && !justJoined) {
+        audio.play().catch(() => {});
+      } else if (!shouldPlay) {
+        audio.pause();
+      }
+      isSyncing = false;
+    };
+
+    if (audio.readyState >= 2) {
+      // Enough data to play
+      act();
+    } else {
+      // Wait until it can play
+      const onReady = () => {
+        audio.removeEventListener("canplay", onReady);
+        act();
+      };
+      audio.addEventListener("canplay", onReady, { once: true });
+      audio.load();
+    }
+  }
+
+  function setTimeAndMaybePlay(time, shouldPlay) {
+    isSyncing = true;
+
+    const act = () => {
+      audio.currentTime = time || 0;
+      if (shouldPlay && !justJoined) {
+        audio.play().catch(() => {});
+      } else if (!shouldPlay) {
+        audio.pause();
+      }
+      isSyncing = false;
+    };
+
+    if (audio.readyState >= 2) {
+      act();
+    } else {
+      const onReady = () => {
+        audio.removeEventListener("canplay", onReady);
+        act();
+      };
+      audio.addEventListener("canplay", onReady, { once: true });
+      audio.load();
+    }
+  }
+
+  function applyState(state) {
+    if (!state || !state.url) return;
+    loadAndMaybePlay(state.url, state.position || 0, !!state.is_playing);
+  }
+
+  // ---------- First user interaction unlock ----------
   document.body.addEventListener(
     "click",
     () => {
       document.getElementById("tapOverlay").style.display = "none";
       justJoined = false;
-      socket.emit("get_current", { room: room });
+      socket.emit("get_current", { room });
     },
     { once: true }
   );
 
-  // ---- Join room ----
-  socket.emit("join", { room: room, name: name });
+  // ---------- Join room ----------
+  socket.emit("join", { room, name });
 
- // ---- Play button ----
-document.getElementById("playBtn").onclick = () => {
-  let url = document.getElementById("yt").value;
+  // ---------- Play button (NO local immediate play) ----------
+  document.getElementById("playBtn").onclick = () => {
+    const url = document.getElementById("yt").value.trim();
+    if (!url) return;
+    // Let the server resolve the direct audio stream (yt-dlp) and broadcast back
+    socket.emit("play", { room, url });
+  };
 
-  // Play for myself (sender)
-  isSyncing = true;
-  audio.src = url;
-  audio.play().catch(() => {});
-  setTimeout(() => { isSyncing = false; }, 300);
-
-  // Tell the server so others can play
-  socket.emit("play", { room: room, url: url });
-};
-
-
-  // ---- Leave button ----
+  // ---------- Leave ----------
   document.getElementById("leaveBtn").onclick = () => {
-    socket.emit("leave", { room: room, name: name });
+    socket.emit("leave", { room, name });
     window.location.href = "/";
   };
 
-  // Helper to safely apply server state without loops
-  function applyState(state) {
-    if (!state || !state.url) return;
-    isSyncing = true;
-    audio.src = state.url;
-    audio.currentTime = state.position || 0;
-
-    if (state.is_playing && !justJoined) {
-      audio.play().catch(() => {});
-    } else {
-      audio.pause();
-    }
-
-    // Give browser time to settle before re-enabling events
-    setTimeout(() => { isSyncing = false; }, 300);
-  }
-
-  // ---- Server → Client ----
+  // ---------- Server → Client ----------
   socket.on("sync_state", applyState);
   socket.on("current_state", applyState);
 
   socket.on("play_audio", (data) => {
-    isSyncing = true;
-    audio.src = data.url;
-    audio.play().catch(() => {});
-    setTimeout(() => { isSyncing = false; }, 300);
+    // Server is sending the final playable audio URL
+    if (!data || !data.url) return;
+    loadAndMaybePlay(data.url, 0, true);
   });
 
   socket.on("pause_from_server", (data) => {
-    isSyncing = true;
-    audio.currentTime = data.time;
-    audio.pause();
-    setTimeout(() => { isSyncing = false; }, 300);
+    setTimeAndMaybePlay((data && data.time) || 0, false);
   });
 
   socket.on("resume_from_server", (data) => {
-    isSyncing = true;
-    audio.currentTime = data.time;
-    audio.play().catch(() => {});
-    setTimeout(() => { isSyncing = false; }, 300);
+    setTimeAndMaybePlay((data && data.time) || 0, true);
   });
 
   socket.on("seek_from_server", (data) => {
-    isSyncing = true;
-    audio.currentTime = data.time;
-    if (data.is_playing) {
-      audio.play().catch(() => {});
-    } else {
-      audio.pause();
-    }
-    setTimeout(() => { isSyncing = false; }, 300);
+    setTimeAndMaybePlay((data && data.time) || 0, !!(data && data.is_playing));
   });
 
-  // ---- Client → Server (only if not syncing) ----
+  // ---------- Client → Server (only if not syncing) ----------
   audio.onpause = () => {
     if (!isSyncing && !justJoined) {
-      socket.emit("pause", { room: room, time: audio.currentTime });
+      socket.emit("pause", { room, time: audio.currentTime });
     }
   };
 
   audio.onplay = () => {
     if (!isSyncing && !justJoined) {
-      socket.emit("resume", { room: room, time: audio.currentTime });
+      socket.emit("resume", { room, time: audio.currentTime });
     }
   };
 
   audio.onseeked = () => {
     if (!isSyncing) {
-      socket.emit("seek", { room: room, time: audio.currentTime });
+      socket.emit("seek", { room, time: audio.currentTime });
     }
   };
 
-  // ---- Periodic time sync ----
+  // ---------- Periodic time sync (keep it light) ----------
   setInterval(() => {
     if (!audio.paused && !isSyncing) {
-      socket.emit("time_update", { room: room, time: audio.currentTime });
+      socket.emit("time_update", { room, time: audio.currentTime });
     }
   }, 1000);
 
-  // ---- Users ----
+  // ---------- Users list & alerts ----------
   socket.on("joined", (data) => {
-    const msg =
-      data.type === "rejoined"
-        ? `${data.name} rejoined`
-        : `${data.name} joined`;
+    const msg = data.type === "rejoined" ? `${data.name} rejoined` : `${data.name} joined`;
     showAlert(msg);
-    updateUsers(data.users);
+    updateUsers(data.users || []);
   });
 
   socket.on("left", (data) => {
     showAlert(`${data.name} left`);
-    updateUsers(data.users);
+    updateUsers(data.users || []);
   });
 
-  socket.on("users", (data) => {
-    updateUsers(data);
-  });
+  socket.on("users", (users) => updateUsers(users || []));
 
   function updateUsers(users) {
-    let ul = document.getElementById("users");
+    const ul = document.getElementById("users");
     ul.innerHTML = "";
     users.forEach((u) => (ul.innerHTML += `<li>${u}</li>`));
   }
@@ -204,6 +224,7 @@ document.getElementById("playBtn").onclick = () => {
     }, 5000);
   }
 </script>
+
 
 
   </body>
