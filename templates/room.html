@@ -169,7 +169,7 @@ document.getElementById("playBtn").onclick = () => {
     if (!audio.paused && !isSyncing) {
       socket.emit("time_update", { room: room, time: audio.currentTime });
     }
-  }, 300);
+  }, 1000);
 
   // ---- Users ----
   socket.on("joined", (data) => {
