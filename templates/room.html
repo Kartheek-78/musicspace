@@ -44,7 +44,7 @@
       Tap anywhere to start playback
     </div>
 
-   <script>
+ <script>
   const room = "{{code}}";
   const name = "{{name}}";
   const socket = io();
@@ -53,6 +53,7 @@
   let isSyncing = false;
   let justJoined = true;
 
+  // ---- Unlock playback on first user interaction ----
   document.body.addEventListener(
     "click",
     () => {
@@ -63,54 +64,75 @@
     { once: true }
   );
 
+  // ---- Join room ----
   socket.emit("join", { room: room, name: name });
 
+  // ---- Play button ----
   document.getElementById("playBtn").onclick = () => {
     let url = document.getElementById("yt").value;
     socket.emit("play", { room: room, url: url });
   };
 
+  // ---- Leave button ----
   document.getElementById("leaveBtn").onclick = () => {
     socket.emit("leave", { room: room, name: name });
     window.location.href = "/";
   };
 
-  socket.on("sync_state", (state) => {
+  // Helper to safely apply server state without loops
+  function applyState(state) {
+    if (!state || !state.url) return;
     isSyncing = true;
     audio.src = state.url;
-    audio.currentTime = state.position;
-    if (state.is_playing && !justJoined) audio.play().catch(() => {});
-    isSyncing = false;
-  });
+    audio.currentTime = state.position || 0;
 
-  socket.on("current_state", (state) => {
-    isSyncing = true;
-    audio.src = state.url;
-    audio.currentTime = state.position;
-    if (state.is_playing && !justJoined) audio.play().catch(() => {});
-    isSyncing = false;
-  });
-
-  setInterval(() => {
-    if (!audio.paused) {
-      socket.emit("time_update", { room: room, time: audio.currentTime });
+    if (state.is_playing && !justJoined) {
+      audio.play().catch(() => {});
+    } else {
+      audio.pause();
     }
-  }, 250);
 
-  socket.on("joined", (data) => {
-    const msg =
-      data.type === "rejoined"
-        ? `${data.name} rejoined`
-        : `${data.name} joined`;
-    showAlert(msg);
-    updateUsers(data.users);
+    // Give browser time to settle before re-enabling events
+    setTimeout(() => { isSyncing = false; }, 300);
+  }
+
+  // ---- Server → Client ----
+  socket.on("sync_state", applyState);
+  socket.on("current_state", applyState);
+
+  socket.on("play_audio", (data) => {
+    isSyncing = true;
+    audio.src = data.url;
+    audio.play().catch(() => {});
+    setTimeout(() => { isSyncing = false; }, 300);
   });
 
-  socket.on("left", (data) => {
-    showAlert(`${data.name} left`);
-    updateUsers(data.users);
+  socket.on("pause_from_server", (data) => {
+    isSyncing = true;
+    audio.currentTime = data.time;
+    audio.pause();
+    setTimeout(() => { isSyncing = false; }, 300);
   });
 
+  socket.on("resume_from_server", (data) => {
+    isSyncing = true;
+    audio.currentTime = data.time;
+    audio.play().catch(() => {});
+    setTimeout(() => { isSyncing = false; }, 300);
+  });
+
+  socket.on("seek_from_server", (data) => {
+    isSyncing = true;
+    audio.currentTime = data.time;
+    if (data.is_playing) {
+      audio.play().catch(() => {});
+    } else {
+      audio.pause();
+    }
+    setTimeout(() => { isSyncing = false; }, 300);
+  });
+
+  // ---- Client → Server (only if not syncing) ----
   audio.onpause = () => {
     if (!isSyncing && !justJoined) {
       socket.emit("pause", { room: room, time: audio.currentTime });
@@ -129,32 +151,26 @@
     }
   };
 
-  socket.on("pause_from_server", (data) => {
-    isSyncing = true;
-    audio.pause();
-    audio.currentTime = data.time;
-    isSyncing = false;
+  // ---- Periodic time sync ----
+  setInterval(() => {
+    if (!audio.paused && !isSyncing) {
+      socket.emit("time_update", { room: room, time: audio.currentTime });
+    }
+  }, 1000);
+
+  // ---- Users ----
+  socket.on("joined", (data) => {
+    const msg =
+      data.type === "rejoined"
+        ? `${data.name} rejoined`
+        : `${data.name} joined`;
+    showAlert(msg);
+    updateUsers(data.users);
   });
 
-  socket.on("resume_from_server", (data) => {
-    isSyncing = true;
-    audio.currentTime = data.time;
-    audio.play().catch(() => {});
-    isSyncing = false;
-  });
-
-  socket.on("seek_from_server", (data) => {
-    isSyncing = true;
-    audio.currentTime = data.time;
-    if (data.is_playing) audio.play().catch(() => {});
-    isSyncing = false;
-  });
-
-  socket.on("play_audio", (data) => {
-    isSyncing = true;
-    audio.src = data.url;
-    audio.play().catch(() => {});
-    isSyncing = false;
+  socket.on("left", (data) => {
+    showAlert(`${data.name} left`);
+    updateUsers(data.users);
   });
 
   socket.on("users", (data) => {
@@ -175,6 +191,7 @@
     }, 5000);
   }
 </script>
+
 
   </body>
 </html>
