@@ -387,8 +387,11 @@ document.getElementById("playBtn").onclick = () => {
   let url = document.getElementById("yt").value;
   const playBtn = document.getElementById("playBtn");
 
-  let countdown = 20;
+  let countdown = 45;
   playBtn.disabled = true;
+  playBtn.style.backgroundColor = "goldenrod"; // golden yellow when disabled
+  playBtn.style.color = "white"; 
+
   playBtn.innerText = `Song is loading (${countdown})`;
 
   let timer = setInterval(() => {
@@ -399,6 +402,7 @@ document.getElementById("playBtn").onclick = () => {
       clearInterval(timer);
       playBtn.innerText = "Play for All";
       playBtn.disabled = false;
+      playBtn.style.backgroundColor = "#07b686"; // back to green when enabled
     }
   }, 1000);
 
@@ -416,6 +420,7 @@ document.getElementById("playBtn").onclick = () => {
     clearInterval(timer);
     playBtn.innerText = "Play for All";
     playBtn.disabled = false;
+    playBtn.style.backgroundColor = "#07b686"; // back to green when playing starts
   };
 };
   // ---- Leave button ----
