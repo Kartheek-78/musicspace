@@ -387,6 +387,19 @@ document.getElementById("playBtn").onclick = () => {
   let url = document.getElementById("yt").value;
   const playBtn = document.getElementById("playBtn");
 
+  // 🚨 Validation: Empty input
+  if (!url) {
+    alert("Please enter a YouTube link.");
+    return;
+  }
+
+  // 🚨 Validation: Must be a YouTube link
+  const ytPattern = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+$/;
+  if (!ytPattern.test(url)) {
+    alert("Please enter a valid YouTube link.");
+    return;
+  }
+
   let countdown = 45;
   playBtn.disabled = true;
   playBtn.style.backgroundColor = "goldenrod"; // golden yellow when disabled
