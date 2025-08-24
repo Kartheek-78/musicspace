@@ -367,7 +367,8 @@
   // ---- Join room ----
   socket.emit("join", { room: room, name: name });
 
- // ---- Play button ----
+ // ---- Play button ---- 
+   /*
 document.getElementById("playBtn").onclick = () => {
   let url = document.getElementById("yt").value;
 
@@ -380,8 +381,51 @@ document.getElementById("playBtn").onclick = () => {
   // Tell the server so others can play
   socket.emit("play", { room: room, url: url });
 };
+*/
 
+   document.getElementById("playBtn").onclick = () => {
+  let url = document.getElementById("yt").value;
+  const playBtn = document.getElementById("playBtn");
 
+  let countdown = 20;
+  playBtn.disabled = true;
+  playBtn.innerText = `Song is loading (${countdown})`;
+
+  let timer = setInterval(() => {
+    countdown--;
+    playBtn.innerText = `Song is loading (${countdown})`;
+
+    if (countdown <= 0) {
+      clearInterval(timer);
+      playBtn.innerText = "Play for All";
+      playBtn.disabled = false;
+    }
+  }, 1000);
+
+  isSyncing = true;
+  audio.src = url;
+
+  audio.play()
+    .then(() => {
+      clearInterval(timer);
+      playBtn.innerText = "Play for All";
+      playBtn.disabled = false;
+    })
+    .catch(() => {
+      clearInterval(timer);
+      playBtn.innerText = "Play for All";
+      playBtn.disabled = false;
+    });
+
+  setTimeout(() => { isSyncing = false; }, 300);
+  socket.emit("play", { room: room, url: url });
+};
+
+audio.onplaying = () => {
+  const playBtn = document.getElementById("playBtn");
+  playBtn.innerText = "Play for All";
+  playBtn.disabled = false;
+};
   // ---- Leave button ----
   document.getElementById("leaveBtn").onclick = () => {
     socket.emit("leave", { room: room, name: name });
