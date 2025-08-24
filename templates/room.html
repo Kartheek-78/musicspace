@@ -405,26 +405,18 @@ document.getElementById("playBtn").onclick = () => {
   isSyncing = true;
   audio.src = url;
 
-  audio.play()
-    .then(() => {
-      clearInterval(timer);
-      playBtn.innerText = "Play for All";
-      playBtn.disabled = false;
-    })
-    .catch(() => {
-      clearInterval(timer);
-      playBtn.innerText = "Play for All";
-      playBtn.disabled = false;
-    });
+  audio.play().catch(() => {});
 
   setTimeout(() => { isSyncing = false; }, 300);
-  socket.emit("play", { room: room, url: url });
-};
 
-audio.onplaying = () => {
-  const playBtn = document.getElementById("playBtn");
-  playBtn.innerText = "Play for All";
-  playBtn.disabled = false;
+  socket.emit("play", { room: room, url: url });
+
+  // Wait for actual playback before resetting
+  audio.onplaying = () => {
+    clearInterval(timer);
+    playBtn.innerText = "Play for All";
+    playBtn.disabled = false;
+  };
 };
   // ---- Leave button ----
   document.getElementById("leaveBtn").onclick = () => {
