@@ -1,4 +1,4 @@
-# Music Space — A Real-Time Shared Listening App
+# Music Space - A Real-Time Shared Listening App
 
 Music Space is a full-stack web project I built during my training to understand real-time audio streaming and synchronization across multiple users. The app creates a virtual music room experience where friends can join using a session code and listen to the same YouTube audio together, in perfect sync.
 
